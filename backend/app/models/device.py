@@ -35,7 +35,7 @@ class Device(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now(), onupdate=func.now())
 
-    interfaces: Mapped[list["Interface"]] = relationship(back_populates="device", cascade="all, delete-orphan")
+    interfaces: Mapped[list["Interface"]] = relationship(back_populates="device", cascade="all, delete-orphan", foreign_keys="Interface.device_id")
     config_backups: Mapped[list["ConfigBackup"]] = relationship(back_populates="device", cascade="all, delete-orphan")
     command_results: Mapped[list["CommandJobResult"]] = relationship(back_populates="device")
     alerts: Mapped[list["Alert"]] = relationship(back_populates="device", cascade="all, delete-orphan")
