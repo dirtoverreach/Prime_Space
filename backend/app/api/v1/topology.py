@@ -14,26 +14,9 @@ def get_topology(db: Session = Depends(get_db)):
 
 
 @router.post("/discover", response_model=TaskResponse)
-def discover_topology(db: Session = Depends(get_db)):
-    from app.tasks.celery_app import celery
-
-    @celery.task(name="topology_discover_all")
-    def _discover_all():
-        from app.database import SessionLocal
-        from app.services.topology_service import discover_neighbors, update_interface_neighbors
-        inner_db = SessionLocal()
-        try:
-            devices = inner_db.query(Device).filter(Device.status == "reachable").all()
-            for device in devices:
-                try:
-                    neighbors = discover_neighbors(device)
-                    update_interface_neighbors(device, neighbors, inner_db)
-                except Exception:
-                    pass
-        finally:
-            inner_db.close()
-
-    task = _discover_all.delay()
+def discover_topology():
+    from app.tasks.topology_tasks import discover_all_neighbors
+    task = discover_all_neighbors.delay()
     return TaskResponse(task_id=task.id)
 
 

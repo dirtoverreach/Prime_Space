@@ -11,6 +11,7 @@ celery = Celery(
         "app.tasks.monitoring_tasks",
         "app.tasks.config_tasks",
         "app.tasks.command_tasks",
+        "app.tasks.topology_tasks",
     ],
 )
 
