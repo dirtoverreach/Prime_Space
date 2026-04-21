@@ -34,7 +34,10 @@ export default function Topology() {
           label: n.hostname,
           platform: n.platform,
           status: n.status,
-          ...n,
+          ip_address: n.ip_address,
+          model: n.model,
+          site: n.site,
+          hostname: n.hostname,
         },
       })),
       ...data.edges.map((e, i) => ({

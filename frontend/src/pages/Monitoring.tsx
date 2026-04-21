@@ -1,10 +1,8 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { fetchDevices } from '../api/devices'
 import { fetchAllStats } from '../api/monitoring'
 import type { DeviceMetric } from '../types/monitoring'
-import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts'
-import { Wifi, WifiOff, Cpu, MemoryStick } from 'lucide-react'
 
 function Gauge({ label, value }: { label: string; value: number | null }) {
   const pct = value ?? 0
@@ -40,7 +38,6 @@ function DeviceCard({ metric, hostname }: { metric: DeviceMetric; hostname: stri
 
 export default function Monitoring() {
   const wsRef = useRef<WebSocket | null>(null)
-  const [liveData, setLiveData] = useState<Record<string, any>>({})
 
   const { data: devices = [] } = useQuery({ queryKey: ['devices'], queryFn: () => fetchDevices() })
   const { data: stats = [], refetch } = useQuery({ queryKey: ['stats'], queryFn: fetchAllStats, refetchInterval: 60000 })
@@ -50,12 +47,8 @@ export default function Monitoring() {
   useEffect(() => {
     const wsUrl = `${window.location.protocol === 'https:' ? 'wss' : 'ws'}://${window.location.host}/api/v1/monitoring/ws`
     wsRef.current = new WebSocket(wsUrl)
-    wsRef.current.onmessage = (evt) => {
-      try {
-        const data = JSON.parse(evt.data)
-        setLiveData((prev) => ({ ...prev, [data.device_id]: data }))
-        refetch()
-      } catch {}
+    wsRef.current.onmessage = () => {
+      refetch()
     }
     return () => wsRef.current?.close()
   }, [])

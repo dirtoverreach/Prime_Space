@@ -11,12 +11,14 @@ export default function CommandRunner() {
   const [jobId, setJobId] = useState<string | null>(null)
 
   const { data: devices = [] } = useQuery({ queryKey: ['devices'], queryFn: () => fetchDevices() })
-  const { data: job } = useQuery({
+  const { data: job } = useQuery<CommandJob>({
     queryKey: ['job', jobId],
     queryFn: () => fetchJob(jobId!),
     enabled: !!jobId,
-    refetchInterval: (data: CommandJob | undefined) =>
-      data?.status === 'completed' || data?.status === 'failed' ? false : 2000,
+    refetchInterval: (query) => {
+      const d = query.state.data
+      return d?.status === 'completed' || d?.status === 'failed' ? false : 2000
+    },
   })
 
   const submitMut = useMutation({

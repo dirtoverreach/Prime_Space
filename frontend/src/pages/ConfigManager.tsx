@@ -4,7 +4,7 @@ import { fetchDevices } from '../api/devices'
 import { fetchBackups, triggerBackup, diffBackups, diffLive } from '../api/configs'
 import DiffViewer from '../components/config/DiffViewer'
 import toast from 'react-hot-toast'
-import { Download, GitCompare, Trash2 } from 'lucide-react'
+import { Download, GitCompare } from 'lucide-react'
 
 export default function ConfigManager() {
   const qc = useQueryClient()
