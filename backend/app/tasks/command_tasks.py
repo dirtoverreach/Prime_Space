@@ -1,18 +1,29 @@
+import time
 from datetime import datetime
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from app.tasks.celery_app import celery
 from app.database import SessionLocal
 from app.models.device import Device
 from app.models.command_job import CommandJob, CommandJobResult
 
 
+def _run_on_device(device, command: str) -> tuple[str, str, int]:
+    """Returns (output, exit_status, duration_ms)."""
+    from app.services.ssh_service import run_command
+    start = time.time()
+    try:
+        output = run_command(device, command)
+        duration_ms = int((time.time() - start) * 1000)
+        return output, "success", duration_ms
+    except Exception as e:
+        duration_ms = int((time.time() - start) * 1000)
+        return str(e), "error", duration_ms
+
+
 @celery.task(bind=True, name="app.tasks.command_tasks.run_command_job")
 def run_command_job(self, job_id: str):
-    import time
-    from nornir import InitNornir
-    from nornir_netmiko.tasks import netmiko_send_command
-    from app.nornir_utils.inventory_plugin import DBInventory
-
     db = SessionLocal()
+    job = None
     try:
         job = db.query(CommandJob).get(job_id)
         if not job:
@@ -29,34 +40,21 @@ def run_command_job(self, job_id: str):
             db.commit()
             return {"error": "no devices found"}
 
-        inventory = DBInventory(devices)
-        nr = InitNornir(runner={"plugin": "threaded", "options": {"num_workers": min(len(devices), 20)}})
-        nr.inventory = inventory.load()
+        num_workers = min(len(devices), 20)
+        futures = {}
+        with ThreadPoolExecutor(max_workers=num_workers) as executor:
+            for device in devices:
+                futures[executor.submit(_run_on_device, device, job.command)] = device
 
-        start = time.time()
-        results = nr.run(task=netmiko_send_command, command_string=job.command)
-        elapsed_ms = int((time.time() - start) * 1000)
-
-        for device in devices:
-            result = results.get(device.hostname)
-            if result and not result.failed:
-                output = str(result[0].result)
-                exit_status = "success"
-            elif result and result.failed:
-                output = str(result.exception) if result.exception else "Error"
-                exit_status = "error"
-            else:
-                output = "No result"
-                exit_status = "error"
-
-            job_result = CommandJobResult(
+        for future, device in futures.items():
+            output, exit_status, duration_ms = future.result()
+            db.add(CommandJobResult(
                 job_id=job.id,
                 device_id=device.id,
                 output=output,
                 exit_status=exit_status,
-                duration_ms=elapsed_ms,
-            )
-            db.add(job_result)
+                duration_ms=duration_ms,
+            ))
 
         job.status = "completed"
         job.completed_at = datetime.utcnow()
