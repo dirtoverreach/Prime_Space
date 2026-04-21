@@ -60,22 +60,28 @@ def _parse_cdp_cisco(output: str) -> list[dict]:
 def discover_neighbors(device) -> list[dict]:
     from app.services import ssh_service
     neighbors = []
-    try:
-        cmd = LLDP_COMMANDS.get(device.platform, "show lldp neighbors")
-        output = ssh_service.run_command(device, cmd)
-        if device.platform == "junos":
-            neighbors = _parse_lldp_junos(output)
-        else:
-            neighbors = _parse_lldp_cisco(output)
-    except Exception:
-        pass
 
-    if not neighbors and device.platform in ("cisco_ios", "cisco_xe"):
+    if device.platform == "junos":
+        try:
+            output = ssh_service.run_command(device, "show lldp neighbors")
+            neighbors = _parse_lldp_junos(output)
+        except Exception:
+            pass
+    else:
+        # Cisco: CDP first (always enabled), LLDP as fallback
         try:
             output = ssh_service.run_command(device, CDP_COMMAND)
             neighbors = _parse_cdp_cisco(output)
         except Exception:
             pass
+
+        if not neighbors:
+            try:
+                cmd = LLDP_COMMANDS.get(device.platform, "show lldp neighbors detail")
+                output = ssh_service.run_command(device, cmd)
+                neighbors = _parse_lldp_cisco(output)
+            except Exception:
+                pass
 
     return neighbors
 
