@@ -209,5 +209,3 @@ def _sync_openwrt(device, db):
         iface.admin_status = "up" if "UP" in flags else "down"
         iface.oper_status = "up" if "LOWER_UP" in flags else "down"
         iface.mac_address = mac if mac != "00:00:00:00:00:00" else ""
-    finally:
-        db.close()
