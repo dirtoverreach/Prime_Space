@@ -56,13 +56,43 @@ function DeviceForm({ onClose }: { onClose: () => void }) {
   )
 }
 
+const PREFIX_OPTIONS = [
+  { prefix: 24, hosts: 254,   label: '/24 — 254 hosts' },
+  { prefix: 25, hosts: 126,   label: '/25 — 126 hosts' },
+  { prefix: 26, hosts: 62,    label: '/26 — 62 hosts' },
+  { prefix: 27, hosts: 30,    label: '/27 — 30 hosts' },
+  { prefix: 28, hosts: 14,    label: '/28 — 14 hosts' },
+  { prefix: 23, hosts: 510,   label: '/23 — 510 hosts' },
+  { prefix: 22, hosts: 1022,  label: '/22 — 1022 hosts' },
+  { prefix: 21, hosts: 2046,  label: '/21 — 2046 hosts' },
+  { prefix: 20, hosts: 4094,  label: '/20 — 4094 hosts' },
+  { prefix: 16, hosts: 65534, label: '/16 — 65534 hosts' },
+]
+
+function buildCidr(network: string, prefix: number): string {
+  // Zero out host bits for the given prefix length
+  const parts = network.split('.').map(Number)
+  if (parts.length !== 4 || parts.some(isNaN)) return `${network}/${prefix}`
+  const addr = (parts[0] << 24) | (parts[1] << 16) | (parts[2] << 8) | parts[3]
+  const mask = prefix === 0 ? 0 : (~0 << (32 - prefix)) >>> 0
+  const net = (addr & mask) >>> 0
+  return `${(net >>> 24) & 0xff}.${(net >>> 16) & 0xff}.${(net >>> 8) & 0xff}.${net & 0xff}/${prefix}`
+}
+
 function DiscoverForm({ onClose, onStarted }: { onClose: () => void; onStarted: () => void }) {
-  const [form, setForm] = useState({
-    cidr: '', username: '', password: '', enable_secret: '',
+  const [network, setNetwork] = useState('192.168.0.0')
+  const [prefix, setPrefix] = useState(24)
+  const [creds, setCreds] = useState({
+    username: '', password: '', enable_secret: '',
     snmp_community: 'public', snmp_version: 'v2c',
   })
-  const set = (k: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
-    setForm((prev) => ({ ...prev, [k]: e.target.value }))
+
+  const cidr = buildCidr(network, prefix)
+  const hostCount = PREFIX_OPTIONS.find(o => o.prefix === prefix)?.hosts ?? 0
+  const isLarge = hostCount > 1000
+
+  const setCred = (k: keyof typeof creds) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
+    setCreds(prev => ({ ...prev, [k]: e.target.value }))
 
   const mutation = useMutation({
     mutationFn: discoverDevices,
@@ -75,13 +105,35 @@ function DiscoverForm({ onClose, onStarted }: { onClose: () => void; onStarted: 
       <div className="bg-white rounded-xl shadow-xl w-full max-w-md p-6 space-y-4">
         <div>
           <h2 className="text-lg font-semibold">Network Discovery</h2>
-          <p className="text-xs text-gray-400 mt-0.5">Scan a CIDR range and auto-add reachable devices via SSH</p>
+          <p className="text-xs text-gray-400 mt-0.5">Scan a subnet and auto-add reachable devices via SSH</p>
         </div>
 
+        {/* CIDR builder */}
         <div>
-          <label className="block text-xs text-gray-500 mb-1">CIDR Range</label>
-          <input placeholder="192.168.1.0/24" value={form.cidr} onChange={set('cidr')}
-            className="w-full border rounded px-3 py-1.5 text-sm font-mono" />
+          <label className="block text-xs text-gray-500 mb-1">Subnet</label>
+          <div className="flex gap-2 items-center">
+            <input
+              value={network}
+              onChange={e => setNetwork(e.target.value)}
+              placeholder="192.168.254.0"
+              className="flex-1 border rounded px-3 py-1.5 text-sm font-mono"
+            />
+            <select
+              value={prefix}
+              onChange={e => setPrefix(Number(e.target.value))}
+              className="border rounded px-2 py-1.5 text-sm font-mono"
+            >
+              {PREFIX_OPTIONS.map(o => (
+                <option key={o.prefix} value={o.prefix}>{o.label}</option>
+              ))}
+            </select>
+          </div>
+          <div className="flex items-center justify-between mt-1.5">
+            <span className="font-mono text-xs text-indigo-600">{cidr}</span>
+            {isLarge && (
+              <span className="text-xs text-amber-600 font-medium">⚠ Large scan — may take a while</span>
+            )}
+          </div>
         </div>
 
         <div className="grid grid-cols-2 gap-3">
@@ -89,13 +141,13 @@ function DiscoverForm({ onClose, onStarted }: { onClose: () => void; onStarted: 
             <div key={k}>
               <label className="block text-xs text-gray-500 mb-1">{label}</label>
               <input type={k === 'password' || k === 'enable_secret' ? 'password' : 'text'}
-                value={form[k]} onChange={set(k)}
+                value={creds[k]} onChange={setCred(k)}
                 className="w-full border rounded px-3 py-1.5 text-sm" />
             </div>
           ))}
           <div>
             <label className="block text-xs text-gray-500 mb-1">SNMP Version</label>
-            <select value={form.snmp_version} onChange={set('snmp_version')} className="w-full border rounded px-3 py-1.5 text-sm">
+            <select value={creds.snmp_version} onChange={setCred('snmp_version')} className="w-full border rounded px-3 py-1.5 text-sm">
               <option value="v2c">v2c</option>
               <option value="v3">v3</option>
             </select>
@@ -105,8 +157,8 @@ function DiscoverForm({ onClose, onStarted }: { onClose: () => void; onStarted: 
         <div className="flex gap-2 pt-1">
           <button onClick={onClose} className="flex-1 border rounded px-4 py-2 text-sm">Cancel</button>
           <button
-            onClick={() => mutation.mutate(form)}
-            disabled={mutation.isPending || !form.cidr || !form.username}
+            onClick={() => mutation.mutate({ ...creds, cidr })}
+            disabled={mutation.isPending || !network || !creds.username}
             className="flex-1 bg-indigo-600 text-white rounded px-4 py-2 text-sm disabled:opacity-60 flex items-center justify-center gap-2"
           >
             {mutation.isPending ? <><Loader2 size={14} className="animate-spin" /> Starting…</> : <><Radar size={14} /> Start Scan</>}
