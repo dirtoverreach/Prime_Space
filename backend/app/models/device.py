@@ -27,6 +27,7 @@ class Device(Base):
     )
     last_seen: Mapped[datetime | None] = mapped_column(DateTime)
     last_backup: Mapped[datetime | None] = mapped_column(DateTime)
+    system_hostname: Mapped[str | None] = mapped_column(String(255))
     serial_number: Mapped[str | None] = mapped_column(String(100))
     model: Mapped[str | None] = mapped_column(String(100))
     os_version: Mapped[str | None] = mapped_column(String(255))

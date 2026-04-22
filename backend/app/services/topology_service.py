@@ -2,6 +2,55 @@ import re
 from sqlalchemy.orm import Session
 from app.models.device import Device, Interface
 
+_IFACE_PREFIXES = [
+    ("GigabitEthernet",      re.compile(r"^GigabitEthernet\s*", re.I)),
+    ("GigabitEthernet",      re.compile(r"^GigE\s*", re.I)),
+    ("GigabitEthernet",      re.compile(r"^Gig\s*", re.I)),
+    ("GigabitEthernet",      re.compile(r"^Gi\s*", re.I)),
+    ("TenGigabitEthernet",   re.compile(r"^TenGigabitEthernet\s*", re.I)),
+    ("TenGigabitEthernet",   re.compile(r"^TenGigE\s*", re.I)),
+    ("TenGigabitEthernet",   re.compile(r"^TenGig\s*", re.I)),
+    ("TenGigabitEthernet",   re.compile(r"^Ten\s*", re.I)),
+    ("TenGigabitEthernet",   re.compile(r"^Te\s*", re.I)),
+    ("FastEthernet",         re.compile(r"^FastEthernet\s*", re.I)),
+    ("FastEthernet",         re.compile(r"^FastE\s*", re.I)),
+    ("FastEthernet",         re.compile(r"^Fa\s*", re.I)),
+    ("HundredGigE",          re.compile(r"^HundredGigE\s*", re.I)),
+    ("HundredGigE",          re.compile(r"^HundredGig\s*", re.I)),
+    ("HundredGigE",          re.compile(r"^Hu\s*", re.I)),
+    ("FortyGigabitEthernet", re.compile(r"^FortyGigabitEthernet\s*", re.I)),
+    ("FortyGigabitEthernet", re.compile(r"^FortyGig\s*", re.I)),
+    ("FortyGigabitEthernet", re.compile(r"^Fo\s*", re.I)),
+    ("TwentyFiveGigE",       re.compile(r"^TwentyFiveGigE\s*", re.I)),
+    ("TwentyFiveGigE",       re.compile(r"^TwentyFiveGig\s*", re.I)),
+    ("TwentyFiveGigE",       re.compile(r"^Twe\s*", re.I)),
+    ("Ethernet",             re.compile(r"^Ethernet\s*", re.I)),
+    ("Ethernet",             re.compile(r"^Eth\s*", re.I)),
+    ("Ethernet",             re.compile(r"^Et\s*", re.I)),
+    ("Loopback",             re.compile(r"^Loopback\s*", re.I)),
+    ("Loopback",             re.compile(r"^Lo\s*", re.I)),
+    ("Vlan",                 re.compile(r"^Vlan\s*", re.I)),
+    ("Vlan",                 re.compile(r"^Vl\s*", re.I)),
+    ("Serial",               re.compile(r"^Serial\s*", re.I)),
+    ("Serial",               re.compile(r"^Se\s*", re.I)),
+    ("Tunnel",               re.compile(r"^Tunnel\s*", re.I)),
+    ("Tunnel",               re.compile(r"^Tu\s*", re.I)),
+    ("Port-channel",         re.compile(r"^Port-channel\s*", re.I)),
+    ("Port-channel",         re.compile(r"^Po\s*", re.I)),
+    ("mgmt",                 re.compile(r"^management\s*", re.I)),
+    ("mgmt",                 re.compile(r"^mgmt\s*", re.I)),
+]
+
+
+def _normalize_iface(name: str) -> str:
+    """Expand CDP-abbreviated interface names to NAPALM full form."""
+    name = name.strip()
+    for full, pattern in _IFACE_PREFIXES:
+        m = pattern.match(name)
+        if m:
+            return full + name[m.end():]
+    return name
+
 
 LLDP_COMMANDS = {
     "junos": "show lldp neighbors",
@@ -48,11 +97,13 @@ def _parse_cdp_cisco(output: str) -> list[dict]:
         device_id = re.search(r"Device ID:\s+(\S+)", block)
         local_if = re.search(r"Interface:\s+(\S+),", block)
         port_id = re.search(r"Port ID \(outgoing port\):\s+(\S+)", block)
+        neighbor_ip = re.search(r"IP address:\s+(\S+)", block)
         if device_id and local_if:
             neighbors.append({
                 "local_interface": local_if.group(1),
                 "neighbor_hostname": device_id.group(1).split(".")[0],
                 "neighbor_interface": port_id.group(1) if port_id else "",
+                "neighbor_ip": neighbor_ip.group(1) if neighbor_ip else "",
             })
     return neighbors
 
@@ -121,17 +172,31 @@ def build_topology_graph(db: Session) -> dict:
 
 
 def update_interface_neighbors(device, neighbors: list[dict], db: Session) -> None:
-    device_map = {d.hostname: d for d in db.query(Device).all()}
+    all_devices = db.query(Device).all()
+    device_by_hostname: dict[str, Device] = {}
+    for d in all_devices:
+        device_by_hostname[d.hostname] = d
+        if d.system_hostname:
+            device_by_hostname[d.system_hostname] = d
+            device_by_hostname[d.system_hostname.split(".")[0]] = d
+    device_by_ip = {d.ip_address: d for d in all_devices}
+
     for neighbor in neighbors:
-        iface = db.query(Interface).filter_by(
-            device_id=device.id, name=neighbor["local_interface"]
-        ).first()
+        local_iface_norm = _normalize_iface(neighbor["local_interface"])
+
+        iface = (
+            db.query(Interface).filter_by(device_id=device.id, name=local_iface_norm).first()
+            or db.query(Interface).filter_by(device_id=device.id, name=neighbor["local_interface"]).first()
+        )
         if not iface:
-            iface = Interface(device_id=device.id, name=neighbor["local_interface"])
+            iface = Interface(device_id=device.id, name=local_iface_norm)
             db.add(iface)
 
-        neighbor_device = device_map.get(neighbor["neighbor_hostname"])
+        neighbor_device = (
+            device_by_hostname.get(neighbor["neighbor_hostname"])
+            or device_by_ip.get(neighbor.get("neighbor_ip", ""))
+        )
         if neighbor_device:
             iface.neighbor_device_id = neighbor_device.id
-            iface.neighbor_interface = neighbor["neighbor_interface"]
+            iface.neighbor_interface = _normalize_iface(neighbor["neighbor_interface"])
     db.commit()

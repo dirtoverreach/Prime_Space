@@ -48,6 +48,7 @@ def _probe_and_upsert(db, ip: str, username: str, password: str,
                     db.add(existing)
 
                 existing.hostname = hostname
+                existing.system_hostname = facts.get("hostname") or facts.get("fqdn")
                 existing.ip_address = ip
                 existing.platform = platform
                 existing.username = username
@@ -84,6 +85,7 @@ def sync_device_facts(self, device_id: str):
             facts = conn.get_facts()
             interfaces = conn.get_interfaces()
 
+        device.system_hostname = facts.get("hostname") or facts.get("fqdn")
         device.serial_number = facts.get("serial_number")
         device.model = facts.get("model")
         device.os_version = facts.get("os_version")
