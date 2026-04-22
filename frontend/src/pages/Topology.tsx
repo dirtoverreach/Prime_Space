@@ -13,12 +13,14 @@ const PLATFORM_COLORS: Record<string, string> = {
   junos:      '#16a34a',
   cisco_ios:  '#2563eb',
   cisco_xe:   '#7c3aed',
+  openwrt:    '#ea580c',
 }
 
 const PLATFORM_LABELS: Record<string, string> = {
   junos:      'Juniper',
   cisco_ios:  'Cisco IOS',
   cisco_xe:   'Cisco IOS-XE',
+  openwrt:    'OpenWrt',
 }
 
 const STATUS_BORDER: Record<string, string> = {

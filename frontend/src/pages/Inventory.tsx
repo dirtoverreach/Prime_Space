@@ -5,7 +5,14 @@ import type { Device, DeviceCreate } from '../types/device'
 import toast from 'react-hot-toast'
 import { Plus, RefreshCw, Trash2, Radar, Loader2 } from 'lucide-react'
 
-const PLATFORMS = ['junos', 'cisco_ios', 'cisco_xe']
+const PLATFORMS = ['junos', 'cisco_ios', 'cisco_xe', 'openwrt']
+
+const PLATFORM_COLORS: Record<string, string> = {
+  junos:      'bg-green-100 text-green-700',
+  cisco_ios:  'bg-blue-100 text-blue-700',
+  cisco_xe:   'bg-violet-100 text-violet-700',
+  openwrt:    'bg-orange-100 text-orange-700',
+}
 
 function DeviceForm({ onClose }: { onClose: () => void }) {
   const qc = useQueryClient()
@@ -236,9 +243,9 @@ export default function Inventory() {
                 <td className="px-4 py-3 font-mono font-medium">{d.hostname}</td>
                 <td className="px-4 py-3 text-gray-600">{d.ip_address}</td>
                 <td className="px-4 py-3">
-                  <span className={`px-2 py-0.5 rounded text-xs font-medium ${
-                    d.platform === 'junos' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'
-                  }`}>{d.platform}</span>
+                  <span className={`px-2 py-0.5 rounded text-xs font-medium ${PLATFORM_COLORS[d.platform] ?? 'bg-gray-100 text-gray-600'}`}>
+                    {d.platform}
+                  </span>
                 </td>
                 <td className="px-4 py-3">
                   <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${

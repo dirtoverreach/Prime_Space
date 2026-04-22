@@ -5,13 +5,16 @@ RUNNING_CONFIG_COMMANDS = {
     "junos": "show configuration | display set",
     "cisco_ios": "show running-config",
     "cisco_xe": "show running-config",
+    "openwrt": "cat /etc/config/network",
 }
+
+_ENABLE_PLATFORMS = {"cisco_ios", "cisco_xe"}
 
 
 def run_command(device, command: str) -> str:
     params = get_netmiko_params(device)
     with ConnectHandler(**params) as conn:
-        if device.platform in ("cisco_ios", "cisco_xe"):
+        if device.platform in _ENABLE_PLATFORMS:
             conn.enable()
         return conn.send_command(command, read_timeout=60)
 
@@ -20,7 +23,7 @@ def run_commands(device, commands: list[str]) -> list[str]:
     params = get_netmiko_params(device)
     results = []
     with ConnectHandler(**params) as conn:
-        if device.platform in ("cisco_ios", "cisco_xe"):
+        if device.platform in _ENABLE_PLATFORMS:
             conn.enable()
         for cmd in commands:
             results.append(conn.send_command(cmd, read_timeout=60))
@@ -35,10 +38,10 @@ def get_running_config(device) -> str:
 def send_config_set(device, config_lines: list[str]) -> str:
     params = get_netmiko_params(device)
     with ConnectHandler(**params) as conn:
-        if device.platform in ("cisco_ios", "cisco_xe"):
+        if device.platform in _ENABLE_PLATFORMS:
             conn.enable()
         output = conn.send_config_set(config_lines, read_timeout=120)
-        if device.platform in ("cisco_ios", "cisco_xe"):
+        if device.platform in _ENABLE_PLATFORMS:
             conn.save_config()
         return output
 

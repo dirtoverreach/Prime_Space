@@ -12,7 +12,7 @@ class Device(Base):
     hostname: Mapped[str] = mapped_column(String(255), unique=True, nullable=False)
     ip_address: Mapped[str] = mapped_column(String(45), nullable=False)
     platform: Mapped[str] = mapped_column(
-        Enum("junos", "cisco_ios", "cisco_xe", name="platform_enum"), nullable=False
+        Enum("junos", "cisco_ios", "cisco_xe", "openwrt", name="platform_enum"), nullable=False
     )
     device_type: Mapped[str | None] = mapped_column(String(100))
     username: Mapped[str] = mapped_column(String(255), nullable=False)

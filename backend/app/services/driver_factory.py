@@ -4,6 +4,7 @@ PLATFORM_TO_NETMIKO = {
     "junos": "juniper_junos",
     "cisco_ios": "cisco_ios",
     "cisco_xe": "cisco_xe",
+    "openwrt": "linux",
 }
 
 PLATFORM_TO_NAPALM = {
@@ -11,6 +12,8 @@ PLATFORM_TO_NAPALM = {
     "cisco_ios": "ios",
     "cisco_xe": "iosxe",
 }
+
+NAPALM_UNSUPPORTED = {"openwrt"}
 
 PLATFORM_TO_NCCLIENT = {
     "junos": {"name": "junos"},

@@ -108,9 +108,36 @@ def _parse_cdp_cisco(output: str) -> list[dict]:
     return neighbors
 
 
+def _parse_lldp_openwrt(output: str) -> list[dict]:
+    """Parse `lldpcli show neighbors detail` output."""
+    neighbors = []
+    blocks = re.split(r"(?=^---------------)", output, flags=re.MULTILINE)
+    for block in blocks:
+        local_if = re.search(r"Interface:\s+(\S+),", block)
+        sys_name = re.search(r"SysName:\s+(\S+)", block)
+        port_id = re.search(r"PortID:\s+ifname\s+(\S+)", block) or re.search(r"PortDescr:\s+(\S+)", block)
+        neighbor_ip = re.search(r"IP:\s+(\d+\.\d+\.\d+\.\d+)", block)
+        if local_if and sys_name:
+            neighbors.append({
+                "local_interface": local_if.group(1),
+                "neighbor_hostname": sys_name.group(1).split(".")[0],
+                "neighbor_interface": port_id.group(1) if port_id else "",
+                "neighbor_ip": neighbor_ip.group(1) if neighbor_ip else "",
+            })
+    return neighbors
+
+
 def discover_neighbors(device) -> list[dict]:
     from app.services import ssh_service
     neighbors = []
+
+    if device.platform == "openwrt":
+        try:
+            output = ssh_service.run_command(device, "lldpcli show neighbors detail")
+            neighbors = _parse_lldp_openwrt(output)
+        except Exception:
+            pass
+        return neighbors
 
     if device.platform == "junos":
         try:
