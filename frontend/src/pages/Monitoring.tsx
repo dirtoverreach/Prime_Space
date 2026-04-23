@@ -25,7 +25,7 @@ function DeviceCard({ metric, hostname }: { metric: DeviceMetric; hostname: stri
     <div className="bg-white rounded-xl shadow p-4 space-y-3">
       <div className="flex items-center justify-between">
         <span className="font-mono font-medium text-sm text-gray-800">{hostname}</span>
-        <span className="text-xs text-gray-400">{new Date(metric.collected_at).toLocaleTimeString()}</span>
+        <span className="text-xs text-gray-400">{new Date(metric.collected_at + 'Z').toLocaleTimeString()}</span>
       </div>
       <Gauge label="CPU" value={metric.cpu_percent} />
       <Gauge label="Memory" value={metric.mem_used_percent} />

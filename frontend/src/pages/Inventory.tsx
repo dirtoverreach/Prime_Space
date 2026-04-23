@@ -337,7 +337,7 @@ export default function Inventory() {
                   }`}>{d.status}</span>
                 </td>
                 <td className="px-3 py-3 text-gray-500">{d.model ?? '—'}</td>
-                <td className="px-3 py-3 text-gray-400 text-xs">{d.last_seen ? new Date(d.last_seen).toLocaleString() : '—'}</td>
+                <td className="px-3 py-3 text-gray-400 text-xs">{d.last_seen ? new Date(d.last_seen + 'Z').toLocaleString() : '—'}</td>
                 <td className="px-3 py-3">
                   <div className="flex gap-2">
                     <button onClick={() => syncMut.mutate(d.id)} className="text-blue-500 hover:text-blue-700" title="Sync facts">

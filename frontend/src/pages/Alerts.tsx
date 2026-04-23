@@ -101,7 +101,7 @@ export default function Alerts() {
                   <td className="px-4 py-3 font-mono text-xs">{a.metric}</td>
                   <td className="px-4 py-3">{a.value.toFixed(1)}</td>
                   <td className="px-4 py-3"><span className={`px-2 py-0.5 rounded text-xs ${STATE_COLORS[a.state]}`}>{a.state}</span></td>
-                  <td className="px-4 py-3 text-xs text-gray-400">{new Date(a.triggered_at).toLocaleString()}</td>
+                  <td className="px-4 py-3 text-xs text-gray-400">{new Date(a.triggered_at + 'Z').toLocaleString()}</td>
                   <td className="px-4 py-3">
                     <div className="flex gap-1">
                       {a.state === 'open' && <button onClick={() => ackMut.mutate(a.id)} title="Acknowledge" className="text-yellow-500 hover:text-yellow-700"><Check size={15} /></button>}
