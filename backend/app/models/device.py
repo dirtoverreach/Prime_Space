@@ -38,7 +38,7 @@ class Device(Base):
 
     interfaces: Mapped[list["Interface"]] = relationship(back_populates="device", cascade="all, delete-orphan", foreign_keys="Interface.device_id")
     config_backups: Mapped[list["ConfigBackup"]] = relationship(back_populates="device", cascade="all, delete-orphan")
-    command_results: Mapped[list["CommandJobResult"]] = relationship(back_populates="device")
+    command_results: Mapped[list["CommandJobResult"]] = relationship(back_populates="device", cascade="all, delete-orphan")
     alerts: Mapped[list["Alert"]] = relationship(back_populates="device", cascade="all, delete-orphan")
     metrics: Mapped[list["DeviceMetric"]] = relationship(back_populates="device", cascade="all, delete-orphan")
 
@@ -59,7 +59,7 @@ class Interface(Base):
     speed_mbps: Mapped[int | None] = mapped_column(Integer)
     mtu: Mapped[int | None] = mapped_column(Integer)
     mac_address: Mapped[str | None] = mapped_column(String(20))
-    neighbor_device_id: Mapped[str | None] = mapped_column(String(36), ForeignKey("devices.id"))
+    neighbor_device_id: Mapped[str | None] = mapped_column(String(36), ForeignKey("devices.id", ondelete="SET NULL"))
     neighbor_interface: Mapped[str | None] = mapped_column(String(100))
 
     device: Mapped["Device"] = relationship(back_populates="interfaces", foreign_keys=[device_id])

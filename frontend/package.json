@@ -15,6 +15,7 @@
     "axios": "^1.15.2",
     "cytoscape": "^3.33.2",
     "cytoscape-dagre": "^2.5.0",
+    "dompurify": "^3.4.0",
     "react": "^19.2.5",
     "react-dom": "^19.2.5",
     "react-hot-toast": "^2.6.0",

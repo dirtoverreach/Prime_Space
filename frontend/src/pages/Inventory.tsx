@@ -1,9 +1,9 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { fetchDevices, createDevice, deleteDevice, syncDevice, discoverDevices } from '../api/devices'
+import { fetchDevices, createDevice, updateDevice, deleteDevice, syncDevice, discoverDevices } from '../api/devices'
 import type { Device, DeviceCreate } from '../types/device'
 import toast from 'react-hot-toast'
-import { Plus, RefreshCw, Trash2, Radar, Loader2 } from 'lucide-react'
+import { Plus, RefreshCw, Trash2, Radar, Loader2, Pencil } from 'lucide-react'
 
 const PLATFORMS = ['junos', 'cisco_ios', 'cisco_xe', 'openwrt']
 
@@ -176,11 +176,92 @@ function DiscoverForm({ onClose, onStarted }: { onClose: () => void; onStarted: 
   )
 }
 
+function EditDeviceForm({ device, onClose }: { device: Device; onClose: () => void }) {
+  const qc = useQueryClient()
+  const [form, setForm] = useState({
+    hostname: device.hostname,
+    ip_address: device.ip_address,
+    username: device.username,
+    password: '',
+    enable_secret: '',
+    snmp_community: '',
+    platform: device.platform,
+    site: device.site ?? '',
+  })
+  const set = (k: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
+    setForm(prev => ({ ...prev, [k]: e.target.value }))
+
+  const mutation = useMutation({
+    mutationFn: (data: typeof form) => {
+      const body: Record<string, string> = {}
+      if (data.hostname !== device.hostname) body.hostname = data.hostname
+      if (data.ip_address !== device.ip_address) body.ip_address = data.ip_address
+      if (data.username !== device.username) body.username = data.username
+      if (data.password) body.password = data.password
+      if (data.enable_secret) body.enable_secret = data.enable_secret
+      if (data.snmp_community) body.snmp_community = data.snmp_community
+      if (data.platform !== device.platform) body.platform = data.platform
+      if (data.site !== (device.site ?? '')) body.site = data.site
+      return updateDevice(device.id, body)
+    },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['devices'] }); toast.success('Device updated'); onClose() },
+    onError: () => toast.error('Update failed'),
+  })
+
+  return (
+    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+      <div className="bg-white rounded-xl shadow-xl w-full max-w-md p-6 space-y-4">
+        <h2 className="text-lg font-semibold">Edit Device — {device.hostname}</h2>
+
+        <div className="grid grid-cols-2 gap-3">
+          {([['hostname', 'Hostname'], ['ip_address', 'IP Address'], ['username', 'Username'], ['site', 'Site (opt.)']] as const).map(([k, label]) => (
+            <div key={k}>
+              <label className="block text-xs text-gray-500 mb-1">{label}</label>
+              <input value={form[k]} onChange={set(k)} className="w-full border rounded px-3 py-1.5 text-sm" />
+            </div>
+          ))}
+        </div>
+
+        <div className="border-t pt-3">
+          <p className="text-xs text-gray-400 mb-2">Leave blank to keep existing credentials</p>
+          <div className="grid grid-cols-2 gap-3">
+            {([['password', 'Password'], ['enable_secret', 'Enable Secret'], ['snmp_community', 'SNMP Community']] as const).map(([k, label]) => (
+              <div key={k}>
+                <label className="block text-xs text-gray-500 mb-1">{label}</label>
+                <input type="password" placeholder="(unchanged)" value={form[k]} onChange={set(k)}
+                  className="w-full border rounded px-3 py-1.5 text-sm" />
+              </div>
+            ))}
+            <div>
+              <label className="block text-xs text-gray-500 mb-1">Platform</label>
+              <select value={form.platform} onChange={set('platform')} className="w-full border rounded px-3 py-1.5 text-sm">
+                {PLATFORMS.map(p => <option key={p}>{p}</option>)}
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <div className="flex gap-2 pt-1">
+          <button onClick={onClose} className="flex-1 border rounded px-4 py-2 text-sm">Cancel</button>
+          <button
+            onClick={() => mutation.mutate(form)}
+            disabled={mutation.isPending}
+            className="flex-1 bg-blue-600 text-white rounded px-4 py-2 text-sm disabled:opacity-60 flex items-center justify-center gap-2"
+          >
+            {mutation.isPending ? <><Loader2 size={14} className="animate-spin" /> Saving…</> : 'Save Changes'}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export default function Inventory() {
   const qc = useQueryClient()
   const [showForm, setShowForm] = useState(false)
   const [showDiscover, setShowDiscover] = useState(false)
   const [scanning, setScanning] = useState(false)
+  const [editDevice, setEditDevice] = useState<Device | null>(null)
   const { data: devices = [], isLoading } = useQuery({ queryKey: ['devices'], queryFn: () => fetchDevices() })
 
   const deleteMut = useMutation({
@@ -223,6 +304,7 @@ export default function Inventory() {
           }}
         />
       )}
+      {editDevice && <EditDeviceForm device={editDevice} onClose={() => setEditDevice(null)} />}
 
       <div className="bg-white rounded-xl shadow overflow-hidden">
         <table className="w-full text-sm">
@@ -260,6 +342,9 @@ export default function Inventory() {
                   <div className="flex gap-2">
                     <button onClick={() => syncMut.mutate(d.id)} className="text-blue-500 hover:text-blue-700" title="Sync facts">
                       <RefreshCw size={15} />
+                    </button>
+                    <button onClick={() => setEditDevice(d)} className="text-gray-400 hover:text-gray-600" title="Edit device">
+                      <Pencil size={15} />
                     </button>
                     <button onClick={() => { if (confirm(`Delete ${d.hostname}?`)) deleteMut.mutate(d.id) }} className="text-red-400 hover:text-red-600" title="Delete">
                       <Trash2 size={15} />
