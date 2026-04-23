@@ -306,8 +306,8 @@ export default function Inventory() {
       )}
       {editDevice && <EditDeviceForm device={editDevice} onClose={() => setEditDevice(null)} />}
 
-      <div className="bg-white rounded-xl shadow overflow-hidden">
-        <table className="w-full text-sm">
+      <div className="bg-white rounded-xl shadow overflow-x-auto">
+        <table className="w-full text-sm min-w-[720px]">
           <thead className="bg-gray-50 text-gray-600 text-xs uppercase">
             <tr>
               {['Hostname', 'IP Address', 'Platform', 'Status', 'Model', 'Last Seen', 'Actions'].map((h) => (
