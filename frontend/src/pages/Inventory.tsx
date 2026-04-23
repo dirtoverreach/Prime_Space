@@ -306,12 +306,12 @@ export default function Inventory() {
       )}
       {editDevice && <EditDeviceForm device={editDevice} onClose={() => setEditDevice(null)} />}
 
-      <div className="bg-white rounded-xl shadow overflow-x-auto">
-        <table className="w-full text-sm min-w-[720px]">
+      <div className="bg-white rounded-xl shadow overflow-hidden">
+        <table className="w-full text-sm">
           <thead className="bg-gray-50 text-gray-600 text-xs uppercase">
             <tr>
               {['Hostname', 'IP Address', 'Platform', 'Status', 'Model', 'Last Seen', 'Actions'].map((h) => (
-                <th key={h} className="px-4 py-3 text-left">{h}</th>
+                <th key={h} className="px-3 py-3 text-left">{h}</th>
               ))}
             </tr>
           </thead>
@@ -322,23 +322,23 @@ export default function Inventory() {
               <tr><td colSpan={7} className="text-center py-8 text-gray-400">No devices yet. Add one above.</td></tr>
             ) : devices.map((d: Device) => (
               <tr key={d.id} className="hover:bg-gray-50">
-                <td className="px-4 py-3 font-mono font-medium">{d.hostname}</td>
-                <td className="px-4 py-3 text-gray-600">{d.ip_address}</td>
-                <td className="px-4 py-3">
+                <td className="px-3 py-3 font-mono font-medium">{d.hostname}</td>
+                <td className="px-3 py-3 text-gray-600">{d.ip_address}</td>
+                <td className="px-3 py-3">
                   <span className={`px-2 py-0.5 rounded text-xs font-medium ${PLATFORM_COLORS[d.platform] ?? 'bg-gray-100 text-gray-600'}`}>
                     {d.platform}
                   </span>
                 </td>
-                <td className="px-4 py-3">
+                <td className="px-3 py-3">
                   <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
                     d.status === 'reachable' ? 'bg-green-100 text-green-700'
                     : d.status === 'unreachable' ? 'bg-red-100 text-red-700'
                     : 'bg-gray-100 text-gray-500'
                   }`}>{d.status}</span>
                 </td>
-                <td className="px-4 py-3 text-gray-500">{d.model ?? '—'}</td>
-                <td className="px-4 py-3 text-gray-400 text-xs">{d.last_seen ? new Date(d.last_seen).toLocaleString() : '—'}</td>
-                <td className="px-4 py-3">
+                <td className="px-3 py-3 text-gray-500">{d.model ?? '—'}</td>
+                <td className="px-3 py-3 text-gray-400 text-xs">{d.last_seen ? new Date(d.last_seen).toLocaleString() : '—'}</td>
+                <td className="px-3 py-3">
                   <div className="flex gap-2">
                     <button onClick={() => syncMut.mutate(d.id)} className="text-blue-500 hover:text-blue-700" title="Sync facts">
                       <RefreshCw size={15} />

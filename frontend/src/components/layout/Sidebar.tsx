@@ -16,7 +16,7 @@ const links = [
 
 export default function Sidebar() {
   return (
-    <aside className="w-56 bg-gray-900 text-gray-200 flex flex-col min-h-screen">
+    <aside className="w-48 bg-gray-900 text-gray-200 flex flex-col min-h-screen">
       <div className="px-4 py-5 border-b border-gray-700">
         <span className="text-lg font-semibold text-white">Prime Space</span>
         <p className="text-xs text-gray-500 mt-0.5">Network Management</p>
