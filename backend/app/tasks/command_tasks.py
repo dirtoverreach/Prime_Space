@@ -40,17 +40,20 @@ def run_command_job(self, job_id: str):
             db.commit()
             return {"error": "no devices found"}
 
+        # Capture device_id as a plain string before threading — SQLAlchemy
+        # ORM attributes can expire/corrupt when accessed across threads.
         num_workers = min(len(devices), 20)
-        futures = {}
+        futures: dict = {}
         with ThreadPoolExecutor(max_workers=num_workers) as executor:
             for device in devices:
-                futures[executor.submit(_run_on_device, device, job.command)] = device
+                device_id = str(device.id)  # plain string, not ORM attribute
+                futures[executor.submit(_run_on_device, device, job.command)] = device_id
 
-        for future, device in futures.items():
+        for future, device_id in futures.items():
             output, exit_status, duration_ms = future.result()
             db.add(CommandJobResult(
                 job_id=job.id,
-                device_id=device.id,
+                device_id=device_id,
                 output=output,
                 exit_status=exit_status,
                 duration_ms=duration_ms,
